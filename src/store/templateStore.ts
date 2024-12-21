@@ -27,9 +27,9 @@ export const useTemplateStore = create<TemplateStore>((set) => ({
   fetchTemplates: async (companyId: string) => {
     set({ loading: true, error: null });
     try {
-      const { data, error } = await supabase.rpc('get_company_templates', { company_id: companyId });
+      const { data, error } = await supabase.rpc('get_company_templates', { company_id_param: companyId });
       if (error) throw error;
-
+  
       set({
         templates: data.map((template: TemplateResponse) => ({
           id: template.id,
