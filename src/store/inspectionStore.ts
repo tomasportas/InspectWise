@@ -25,21 +25,22 @@ export const useInspectionStore = create<InspectionStore>((set) => ({
         .select('*')
         .eq('company_id', companyId)
         .order('date', { ascending: false });
-      
+
       if (error) throw error;
 
-      const transformedData = data.map(inspection => ({
-        id: inspection.id,
-        templateId: inspection.template_id,
-        inspectorName: inspection.inspector_name,
-        status: inspection.status,
-        date: new Date(inspection.date),
-        location: inspection.location,
-        responses: inspection.responses,
-        company_id: inspection.company_id
-      }));
-      
-      set({ inspections: transformedData });
+      set({
+        inspections: data.map((inspection) => ({
+          id: inspection.id,
+          template_id: inspection.template_id,
+          inspector_name: inspection.inspector_name,
+          status: inspection.status,
+          date: new Date(inspection.date),
+          location: inspection.location,
+          responses: inspection.responses,
+          company_id: inspection.company_id,
+          duplicated_sections: inspection.duplicated_sections, // If applicable
+        })),
+      });
     } catch (error) {
       console.error('Error fetching inspections:', error);
       set({ error: (error as Error).message });
@@ -54,38 +55,17 @@ export const useInspectionStore = create<InspectionStore>((set) => ({
       const { error } = await supabase
         .from('inspections')
         .insert([{
-          template_id: inspection.templateId,
-          inspector_name: inspection.inspectorName,
+          template_id: inspection.template_id,
+          inspector_name: inspection.inspector_name,
           status: inspection.status,
           date: inspection.date.toISOString(),
           location: inspection.location,
           responses: inspection.responses,
-          company_id: companyId
+          company_id: companyId,
         }]);
-      
-      if (error) throw error;
-      
-      // Refetch to get updated list
-      const { data: updatedData, error: fetchError } = await supabase
-        .from('inspections')
-        .select('*')
-        .eq('company_id', companyId)
-        .order('date', { ascending: false });
-      
-      if (fetchError) throw fetchError;
 
-      const transformedData = updatedData.map(inspection => ({
-        id: inspection.id,
-        templateId: inspection.template_id,
-        inspectorName: inspection.inspector_name,
-        status: inspection.status,
-        date: new Date(inspection.date),
-        location: inspection.location,
-        responses: inspection.responses,
-        company_id: inspection.company_id
-      }));
-      
-      set({ inspections: transformedData });
+      if (error) throw error;
+      await useInspectionStore.getState().fetchInspections(companyId);
     } catch (error) {
       console.error('Error adding inspection:', error);
       set({ error: (error as Error).message });
@@ -97,50 +77,28 @@ export const useInspectionStore = create<InspectionStore>((set) => ({
   updateInspection: async (id, inspection) => {
     set({ loading: true, error: null });
     try {
-      // Get the company_id first
-      const { data: currentInspection } = await supabase
+      const { data: currentInspection, error: fetchError } = await supabase
         .from('inspections')
         .select('company_id')
         .eq('id', id)
         .single();
 
-      if (!currentInspection) throw new Error('Inspection not found');
+      if (fetchError || !currentInspection) throw new Error('Inspection not found');
 
       const { error } = await supabase
         .from('inspections')
         .update({
-          template_id: inspection.templateId,
-          inspector_name: inspection.inspectorName,
+          template_id: inspection.template_id,
+          inspector_name: inspection.inspector_name,
           status: inspection.status,
           date: inspection.date.toISOString(),
           location: inspection.location,
-          responses: inspection.responses
+          responses: inspection.responses,
         })
         .eq('id', id);
-      
-      if (error) throw error;
-      
-      // Refetch to get updated list
-      const { data: updatedData, error: fetchError } = await supabase
-        .from('inspections')
-        .select('*')
-        .eq('company_id', currentInspection.company_id)
-        .order('date', { ascending: false });
-      
-      if (fetchError) throw fetchError;
 
-      const transformedData = updatedData.map(inspection => ({
-        id: inspection.id,
-        templateId: inspection.template_id,
-        inspectorName: inspection.inspector_name,
-        status: inspection.status,
-        date: new Date(inspection.date),
-        location: inspection.location,
-        responses: inspection.responses,
-        company_id: inspection.company_id
-      }));
-      
-      set({ inspections: transformedData });
+      if (error) throw error;
+      await useInspectionStore.getState().fetchInspections(currentInspection.company_id);
     } catch (error) {
       console.error('Error updating inspection:', error);
       set({ error: (error as Error).message });
@@ -152,43 +110,21 @@ export const useInspectionStore = create<InspectionStore>((set) => ({
   deleteInspection: async (id) => {
     set({ loading: true, error: null });
     try {
-      // Get the company_id first
-      const { data: currentInspection } = await supabase
+      const { data: currentInspection, error: fetchError } = await supabase
         .from('inspections')
         .select('company_id')
         .eq('id', id)
         .single();
 
-      if (!currentInspection) throw new Error('Inspection not found');
+      if (fetchError || !currentInspection) throw new Error('Inspection not found');
 
       const { error } = await supabase
         .from('inspections')
         .delete()
         .eq('id', id);
-      
-      if (error) throw error;
-      
-      // Refetch to get updated list
-      const { data: updatedData, error: fetchError } = await supabase
-        .from('inspections')
-        .select('*')
-        .eq('company_id', currentInspection.company_id)
-        .order('date', { ascending: false });
-      
-      if (fetchError) throw fetchError;
 
-      const transformedData = updatedData.map(inspection => ({
-        id: inspection.id,
-        templateId: inspection.template_id,
-        inspectorName: inspection.inspector_name,
-        status: inspection.status,
-        date: new Date(inspection.date),
-        location: inspection.location,
-        responses: inspection.responses,
-        company_id: inspection.company_id
-      }));
-      
-      set({ inspections: transformedData });
+      if (error) throw error;
+      await useInspectionStore.getState().fetchInspections(currentInspection.company_id);
     } catch (error) {
       console.error('Error deleting inspection:', error);
       set({ error: (error as Error).message });

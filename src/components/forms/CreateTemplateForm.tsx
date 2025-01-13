@@ -1,7 +1,5 @@
-// src/components/forms/CreateTemplateForm.tsx
-
-import { useState, FormEvent } from 'react';
-import { nanoid } from 'nanoid';
+import { useState, FormEvent, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { QuestionList } from './QuestionList';
@@ -16,17 +14,21 @@ interface CreateTemplateFormProps {
 }
 
 export function CreateTemplateForm({ template, onSave, mode = 'create' }: CreateTemplateFormProps) {
-  const { company } = useAuth();
+  const { companyId, userId } = useAuth(); // Automatically fetch IDs
   const [name, setName] = useState(template?.name || '');
   const [questions, setQuestions] = useState<Question[]>(template?.questions || []);
   const [error, setError] = useState<string | null>(null);
   const { addTemplate, updateTemplate } = useTemplateStore();
 
+  useEffect(() => {
+    console.log('🔑 Company ID:', companyId, 'User ID:', userId);
+  }, [companyId, userId]);
+
   const handleAddQuestion = () => {
     setQuestions([
       ...questions,
       {
-        id: nanoid(),
+        id: uuidv4(), // Generate a proper UUID
         type: 'text',
         question: '',
         required: false,
@@ -46,48 +48,40 @@ export function CreateTemplateForm({ template, onSave, mode = 'create' }: Create
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('Starting template submission');
-
-    if (!company?.id) {
-      console.error('No company ID found:', company);
-      setError('No company associated with your account. Please try logging in again.');
+  
+    if (!companyId || !/^[0-9a-fA-F-]{36}$/.test(companyId)) {
+      console.error('❌ Invalid or missing company ID:', companyId);
+      setError('Invalid company ID. Please try logging in again.');
       return;
     }
-
+  
     try {
-      console.log('Preparing template data:', {
-        name,
-        questions,
-        companyId: company.id
-      });
-
       const templateData = {
         name,
         questions,
+        userId, // Include userId in template data
       };
-
+  
+      console.log('📦 Payload being sent to backend:', {
+        templateData,
+        companyId,
+      });
+  
       if (template) {
-        console.log('Updating existing template:', template.id);
-        await updateTemplate(template.id, templateData, company.id);
-        console.log('Template updated successfully');
+        console.log('🔄 Updating existing template:', template.id);
+        await updateTemplate(template.id, templateData, companyId);
       } else {
-        console.log('Creating new template');
-        await addTemplate(templateData, company.id);
-        console.log('Template created successfully');
+        console.log('➕ Creating new template');
+        await addTemplate(templateData, companyId);
       }
-
-      console.log('Template save complete');
+  
       onSave?.({ name, questions });
     } catch (err) {
-      console.error('Detailed error saving template:', err);
-      if (err instanceof Error) {
-        setError(`Failed to save template: ${err.message}`);
-      } else {
-        setError('Failed to save template. Please try again.');
-      }
+      console.error('❌ Error saving template:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save template.');
     }
   };
-
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6 pb-20">
       {error && (

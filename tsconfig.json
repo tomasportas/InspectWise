@@ -1,4 +1,15 @@
 {
+  "compilerOptions": {
+    "composite": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "typeRoots": ["./node_modules/@types", "./types"]
+  },
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },

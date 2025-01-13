@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 
 interface Company {
   id: string;
@@ -19,20 +19,16 @@ interface AuthContextType extends AuthState {
   signIn: (email: string, password: string, onSuccess?: () => void) => Promise<void>;
   signOut: () => Promise<void>;
   refreshCompany: () => Promise<void>;
+  userId: string | null;
   companyId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const clearLocalStorage = () => {
-  console.log('Clearing local storage and session data');
-  try {
-    localStorage.clear();
-    sessionStorage.clear();
-    supabase.auth.signOut(); // Force sign out to clear Supabase session
-  } catch (error) {
-    console.error('Error clearing storage:', error);
-  }
+  localStorage.clear();
+  sessionStorage.clear();
+  supabase.auth.signOut();
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -42,54 +38,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading: true,
     isAuthenticated: false,
   });
-  const navigate = useNavigate(); // Initialize navigate hook
+  const navigate = useNavigate();
 
   const updateState = useCallback((updates: Partial<AuthState>) => {
     setState((current) => ({ ...current, ...updates }));
   }, []);
 
   const fetchCompany = useCallback(async (userId: string): Promise<Company | null> => {
-    console.log('Fetching company for user:', userId);
-
     try {
       const { data, error } = await supabase.rpc('get_user_company_details', { uid: userId });
-
       if (error) {
-        console.error('Error fetching company:', error);
+        console.error('Error fetching company:', error.message);
         return null;
       }
-
-      return data ?? null;
+      if (!data) {
+        console.warn('No company found for user:', userId);
+        return null;
+      }
+      console.log('Fetched company details:', data);
+      return data;
     } catch (error) {
       console.error('Unexpected error in fetchCompany:', error);
       return null;
     }
   }, []);
 
-  const signIn = async (email: string, password: string, onSuccess?: () => void): Promise<void> => {
+  const signIn = async (email: string, password: string, onSuccess?: () => void) => {
     updateState({ loading: true });
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
       if (error) {
-        console.error('Sign in error:', error);
+        console.error('Sign-in error:', error.message);
         updateState({ loading: false });
         throw error;
       }
-
       if (data.user) {
         const company = await fetchCompany(data.user.id);
-        if (!company) {
-          throw new Error('No company associated with this account');
-        }
+        if (!company) throw new Error('No company associated with this account');
         updateState({ user: data.user, company, loading: false, isAuthenticated: true });
-
-        if (onSuccess) {
-          onSuccess(); // Trigger callback (e.g., custom behavior)
-        } else {
-          navigate('/home'); // Default redirect to /home
-        }
+        onSuccess ? onSuccess() : navigate('/home');
       }
     } catch (error) {
       updateState({ user: null, company: null, loading: false, isAuthenticated: false });
@@ -97,22 +84,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signOut = async (): Promise<void> => {
+  const signOut = async () => {
     try {
       await supabase.auth.signOut();
       clearLocalStorage();
       updateState({ user: null, company: null, loading: false, isAuthenticated: false });
-      navigate('/login'); // Redirect to login after signing out
+      navigate('/login');
     } catch (error) {
-      console.error('Error during sign out:', error);
+      console.error('Error during sign-out:', error);
+    }
+  };
+
+  const refreshCompany = async () => {
+    if (state.user) {
+      const company = await fetchCompany(state.user.id);
+      updateState({ company });
+    } else {
+      console.warn('No user found during refreshCompany');
     }
   };
 
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
-
       if (error || !session?.user) {
+        console.warn('Session not found or error occurred:', error?.message);
         clearLocalStorage();
         updateState({ user: null, company: null, loading: false, isAuthenticated: false });
         return;
@@ -120,13 +116,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       const company = await fetchCompany(session.user.id);
       if (company) {
-        updateState({ user: session.user, company, loading: false, isAuthenticated: true });
+        updateState({
+          user: session.user,
+          company,
+          loading: false,
+          isAuthenticated: true,
+        });
       } else {
+        console.warn('No company associated with the current user.');
         clearLocalStorage();
         updateState({ user: null, company: null, loading: false, isAuthenticated: false });
       }
     };
-
     checkSession();
   }, [fetchCompany, updateState]);
 
@@ -134,10 +135,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     ...state,
     signIn,
     signOut,
-    refreshCompany: async () => {
-      const company = state.user ? await fetchCompany(state.user.id) : null;
-      updateState({ company });
-    },
+    refreshCompany,
+    userId: state.user?.id || null,
     companyId: state.company?.id || null,
   };
 

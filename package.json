@@ -5,21 +5,27 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  "resolutions": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
   "dependencies": {
-    "@supabase/supabase-js": "^2.x",
+    "@supabase/supabase-js": "^2.47.12",
     "clsx": "^2.1.1",
     "jspdf": "^2.5.2",
     "lucide-react": "^0.468.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-router-dom": "^6.x",
     "react-signature-canvas": "^1.0.6",
     "tailwind-merge": "^2.5.5",
+    "uuid": "^11.0.5",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.x",
     "autoprefixer": "^10.x",
     "postcss": "^8.x",
