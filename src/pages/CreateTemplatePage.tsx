@@ -7,8 +7,9 @@ import { Button } from '../components/ui/Button';
 import { CreateTemplateForm } from '../components/forms/CreateTemplateForm';
 import { ConfigurationModal } from '../components/forms/configuration/ConfigurationModal';
 import { Template } from '../types';
-import { nanoid } from 'nanoid';
+import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase/client';
 
 interface CreateTemplatePageProps {
   companyId: string;
@@ -26,7 +27,7 @@ export function CreateTemplatePage({ companyId }: CreateTemplatePageProps) {
 
     try {
       const newTemplate: Template = {
-        id: nanoid(),
+        id: uuidv4(),
         name: templateData.name || '',
         questions: templateData.questions || [],
         company_id: companyId,
@@ -72,9 +73,9 @@ export function CreateTemplatePage({ companyId }: CreateTemplatePageProps) {
       <div className="bg-white shadow rounded-lg p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Template</h1>
 
-        <CreateTemplateForm 
+        <CreateTemplateForm
           template={{
-            id: nanoid(),
+            id: uuidv4(),
             name: '',
             questions: [],
             company_id: companyId,
